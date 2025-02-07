@@ -1,10 +1,15 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
-import { ShoppingBasket } from "lucide-react";
+import { useCartStore } from "@/lib/store/use-cart-store";
+import { useUserStore } from "@/lib/store/use-user-store";
+import { ShoppingBasket, User } from "lucide-react";
 import Link from "next/link";
 
 export const Header = () => {
+  const { items } = useCartStore();
   return (
-    <header className="flex items-center gap-2 px-4 py-2 border-b shadow-sm">
+    <header className="flex items-center gap-2 border-b px-4 py-2 shadow-sm">
       <Link href="/" className="flex items-center gap-2">
         <img
           src="/healthdonals.png"
@@ -14,15 +19,38 @@ export const Header = () => {
         />
         <h1 className="text-sm font-bold">HealthDonald</h1>
       </Link>
-      <div className="ml-auto"></div>
+      <div className="ml-auto">
+        <UserNameHeader />
+      </div>
       <Button
         variant="outline"
         size="sm"
-        className="inline-flex gap-2 items-center"
+        className="inline-flex items-center gap-2"
       >
-        <span className="font-bold">0</span>
+        <span className="font-bold">
+          {Object.values(items).reduce(
+            (total, item) => total + item.quantity,
+            0
+          )}
+        </span>
         <ShoppingBasket size={12} />
       </Button>
     </header>
+  );
+};
+
+const UserNameHeader = () => {
+  const userStore = useUserStore((s) => s.userName);
+  const logout = useUserStore((s) => s.logout);
+
+  if (!userStore) return null;
+  return (
+    <button
+      className="flex items-center gap-2 font-bold"
+      onClick={() => logout()}
+    >
+      <User size={12} />
+      <span>{userStore}</span>
+    </button>
   );
 };
