@@ -18,12 +18,12 @@ import {
 } from "@/components/ui/select";
 import { CATEGORIES } from "@/lib/categories-data";
 import { getId } from "@/lib/get-id";
+import { getItem } from "@/lib/items/get-item";
 import { updateItem } from "@/lib/items/set-items";
 import { useUserStore } from "@/lib/store/use-user-store";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -49,10 +49,17 @@ const formSchema = z.object({
   image: z.any(),
 });
 
-export default function ItemForm() {
+export default function EditItem() {
   const router = useRouter();
+  const params = useParams();
+  const itemId = params.itemId; // On récupère l'id dynamique depuis l'URL
+
+  // State pour gérer la catégorie sélectionnée
   const [selectedCategory, setSelectedCategory] = useState("Select a Category");
-  // Crée tes méthodes de formulaire
+  // Pour gérer le chargement de l'item
+  const [loadingItem, setLoadingItem] = useState(true);
+
+  // Initialisation du form avec des valeurs vides
   const methods = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -64,16 +71,15 @@ export default function ItemForm() {
     },
   });
 
-  const [isLoading, setIsLoading] = useState(false);
-
   const {
     control,
     formState: { errors },
     watch,
     setValue,
+    reset,
   } = methods;
 
-  // Surveille le champ "name" et met à jour "id" automatiquement en remplaçant les espaces par '-'
+  // Surveille le champ "name" pour générer l'ID automatiquement (si besoin)
   const nameValue = watch("name");
   useEffect(() => {
     if (nameValue) {
@@ -81,36 +87,66 @@ export default function ItemForm() {
     }
   }, [nameValue, setValue]);
 
-  const [imagePreview, setImagePreview] = useState(null);
-
-  const handleImageChange = (event, field) => {
-    const file = event.target.files[0];
-    field.onChange(file);
-    if (file) {
-      setImagePreview(URL.createObjectURL(file));
+  // Charger l'item et remplir le formulaire avec ses valeurs actuelles
+  useEffect(() => {
+    async function fetchItem() {
+      if (!itemId) return;
+      try {
+        const itemData = await getItem(itemId);
+        if (itemData) {
+          reset({
+            name: itemData.name,
+            id: itemData.id,
+            category: itemData.category,
+            price: itemData.price,
+            image: itemData.image || null,
+          });
+          setSelectedCategory(itemData.category);
+        } else {
+          toast.error("❌ Item non trouvé dans Firestore !");
+          router.push("/");
+        }
+      } catch (error) {
+        console.error("❌ Erreur lors du chargement de l'item:", error);
+        toast.error("Erreur lors du chargement de l'item");
+      } finally {
+        setLoadingItem(false);
+      }
     }
-  };
+    fetchItem();
+  }, [itemId, reset, router]);
 
   const submitForm = async (data) => {
-    setIsLoading(true);
-    await updateItem(data, getId(data.name), {
-      price: data.price,
-      name: data.name,
-      category: data.category,
-      image: data.image,
-    });
-    toast.success("Item ajouté avec succès !");
-    router.push("/");
-    setIsLoading(false);
+    try {
+      await updateItem(
+        {
+          price: data.price,
+          name: data.name,
+          category: data.category,
+          image: data.image,
+        },
+        itemId
+      );
+
+      toast.success("✅ Item modifié avec succès !");
+      router.push("/");
+    } catch (error) {
+      console.error("❌ Erreur lors de la modification de l'item:", error);
+      toast.error("Erreur lors de la modification de l'item");
+    }
   };
 
   const userName = useUserStore((s) => s.userName);
   if (userName !== "admin") {
     return (
       <div className="mt-10 p-4 text-center text-2xl font-bold text-red-500">
-        Vous n'avez pas les permissions pour ajouter un item
+        Vous n'avez pas les permissions pour modifier un item
       </div>
     );
+  }
+
+  if (loadingItem) {
+    return <div>Chargement des données de l'item...</div>;
   }
 
   return (
@@ -140,7 +176,7 @@ export default function ItemForm() {
             <FormItem>
               <Label className="text-sm font-bold">ID</Label>
               <FormControl>
-                <Input {...field} placeholder="ID de l'item" />
+                <Input {...field} placeholder="ID de l'item" readOnly />
               </FormControl>
               <FormMessage>{errors.id?.message}</FormMessage>
             </FormItem>
@@ -152,25 +188,21 @@ export default function ItemForm() {
           name="category"
           render={({ field }) => (
             <FormItem>
-              <Label className="text-sm font-bold">Category</Label>
+              <Label className="text-sm font-bold">Catégorie</Label>
               <FormControl>
                 <Select
-                  value={selectedCategory.title}
+                  value={selectedCategory}
                   onValueChange={(value) => {
-                    const category = CATEGORIES.find((c) => c.title === value);
-                    setSelectedCategory(category);
-                    field.onChange(category.title);
+                    setSelectedCategory(value);
+                    field.onChange(value);
                   }}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue
-                      placeholder="Select a Category"
-                      value={selectedCategory.title}
-                    />
+                    <SelectValue placeholder="Sélectionnez une catégorie" />
                   </SelectTrigger>
                   <SelectContent>
                     {CATEGORIES.map((category) => (
-                      <SelectItem key={category.id} value={category.title}>
+                      <SelectItem key={category.id} value={category.id}>
                         <div className="flex items-center gap-2">
                           <Image
                             src={category.logo}
@@ -215,13 +247,16 @@ export default function ItemForm() {
                   <Input
                     type="file"
                     accept="image/*"
-                    onChange={(event) => handleImageChange(event, field)}
+                    onChange={(event) => {
+                      const file = event.target.files[0];
+                      field.onChange(file);
+                    }}
                   />
                 </FormControl>
-                {imagePreview && (
+                {field.value && typeof field.value === "string" && (
                   <Image
-                    src={imagePreview}
-                    alt="Preview"
+                    src={field.value}
+                    alt="Image actuelle"
                     width={56}
                     height={56}
                     className="mt-2 rounded object-cover"
@@ -232,17 +267,10 @@ export default function ItemForm() {
             </FormItem>
           )}
         />
-
-        <Button type="submit" className="mt-4" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="ml-2 size-4 animate-spin" />
-              Ajout en cours...
-            </>
-          ) : (
-            "Ajouter l'item"
-          )}
-        </Button>
+        <div className="mt-4 flex gap-4">
+          <Button type="submit">Modifier l'item</Button>
+          <Button onClick={() => router.push("/")}>Annuler</Button>
+        </div>
       </form>
     </FormProvider>
   );

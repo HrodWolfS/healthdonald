@@ -1,26 +1,26 @@
 export const CATEGORIES = [
   {
-    id: "burger",
+    id: "Burger",
     title: "Burger",
     logo: "/categories/burger.png",
   },
   {
-    id: "nuggets",
+    id: "Nuggets",
     title: "Nuggets",
     logo: "/categories/nuggets.png",
   },
   {
-    id: "fries",
+    id: "Fries",
     title: "Fries",
     logo: "/categories/fries.png",
   },
   {
-    id: "dessert",
+    id: "Dessert",
     title: "Dessert",
     logo: "/categories/dessert.png",
   },
   {
-    id: "drink",
+    id: "Drink",
     title: "Drink",
     logo: "/categories/drink.png",
   },

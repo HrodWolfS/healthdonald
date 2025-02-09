@@ -6,8 +6,10 @@ import {
 } from "@/lib/store/use-cart-store";
 import { ChevronUp } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { CartBarItem } from "./CartBarItem";
 export const CartBar = () => {
+  const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   const items = useCartStore((state) => state.items);
   const cartQuantity = useCartQuantity();
@@ -54,7 +56,7 @@ export const CartBar = () => {
 
       {/* Bouton de checkout */}
       <div className="border-t border-gray-200 p-3">
-        <Button className="w-full" onClick={() => console.log("Checkout")}>
+        <Button className="w-full" onClick={() => router.push("/checkout")}>
           Checkout
         </Button>
       </div>

@@ -32,9 +32,9 @@ export default function RootLayout({ children }) {
         )}
       >
         <Toaster />
-        <div className="relative m-auto flex max-h-full min-h-full max-w-md flex-col gap-2 border-x py-2">
+        <div className="relative m-auto flex h-screen max-w-md flex-col border-x">
           <Header />
-          <div className="flex-1 pt-2">{children}</div>
+          <div className="max-h-[calc(100vh-100px)] flex-1 p-1">{children}</div>
           <Footer />
         </div>
       </body>

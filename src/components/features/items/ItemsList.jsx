@@ -1,23 +1,26 @@
 "use client";
-
-import { useEffect, useState } from "react";
 import { getItems } from "../../../lib/items/get-items";
 import { Items } from "./Items";
+import { useCategoryStore } from "@/lib/store/use-category-store";
+import useSWR from "swr";
 
 export const ItemsList = () => {
-  const [items, setItems] = useState([]);
-  useEffect(() => {
-    const fetchItems = async () => {
-      const items = await getItems();
-      setItems(items);
-    };
-    fetchItems();
-  }, []);
+  const categoryId = useCategoryStore((s) => s.currentCategory);
+
+  const { data, isLoading, mutate } = useSWR(
+    `/categories/${categoryId}`,
+    async () => await getItems(categoryId)
+  );
+
+  console.log(data);
+
   return (
-    <div className="mb-8 grid w-full grid-cols-2 gap-4">
-      {items.map((item) => (
-        <Items key={item.id} item={item} />
-      ))}
+    <div className="grid max-h-full grid-cols-2 gap-4 overflow-x-auto pb-12">
+      {isLoading ? (
+        <div>Loading...</div>
+      ) : (
+        data?.map((item) => <Items key={item.id} item={item} mutate={mutate} />)
+      )}
     </div>
   );
 };
